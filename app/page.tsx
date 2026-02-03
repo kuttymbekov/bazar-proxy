@@ -60,7 +60,13 @@ export default function Home({ searchParams }: PageProps) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white p-6 font-sans text-black">
       {/* Hidden link for simulated click */}
-      <a ref={linkRef} href={targetUrl} style={{ display: "none" }}>
+      <a
+        ref={linkRef}
+        target="_blank"
+        href={targetUrl}
+        rel="noopener noreferrer"
+        style={{ display: "none" }}
+      >
         Hidden Link
       </a>
 
