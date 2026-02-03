@@ -41,26 +41,22 @@ export default function Home({ searchParams }: PageProps) {
     const attemptRedirect = () => {
       if (linkRef.current) {
         linkRef.current.click();
-      } else {
-        window.location.href = finalUrl;
       }
     };
 
     // Execute redirection attempt
-    attemptRedirect();
 
     // After a short delay, stop showing the loader and show the manual button
     const timer = setTimeout(() => {
       setIsRedirecting(false);
-    }, 2500);
+      attemptRedirect();
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [params.link]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white p-6 font-sans text-black">
-      {/* Hidden link for simulated click */}
-
       <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center">
         <>
           <div className="space-y-4">
