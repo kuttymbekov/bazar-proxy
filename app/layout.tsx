@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   },
   other: {
     "apple-itunes-app":
-      "app-id=YOUR_APP_ID_IF_KNOWN, app-argument=https://web-customer.bazarmarket.kg",
+      "app-id=6748224863, app-argument=https://web-customer.bazarmarket.kg",
   },
 };
 

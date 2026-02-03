@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -12,6 +12,7 @@ export default function Home({ searchParams }: PageProps) {
     "https://web-customer.bazarmarket.kg",
   );
   const [isRedirecting, setIsRedirecting] = useState(true);
+  const linkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     const linkParam = typeof params.link === "string" ? params.link : "";
@@ -35,21 +36,34 @@ export default function Home({ searchParams }: PageProps) {
 
     setTargetUrl(finalUrl);
 
-    // Try to redirect automatically
-    // This is often blocked by in-app browsers if not triggered by a click,
-    // but we try it anyway as a first attempt.
-    window.location.href = finalUrl;
+    // Try to redirect automatically using a simulated click
+    // This often works better for deep links than window.location.href
+    const attemptRedirect = () => {
+      if (linkRef.current) {
+        linkRef.current.click();
+      } else {
+        window.location.href = finalUrl;
+      }
+    };
+
+    // Execute redirection attempt
+    attemptRedirect();
 
     // After a short delay, stop showing the loader and show the manual button
     const timer = setTimeout(() => {
       setIsRedirecting(false);
-    }, 2000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [params.link]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white p-6 font-sans text-black">
+      {/* Hidden link for simulated click */}
+      <a ref={linkRef} href={targetUrl} style={{ display: "none" }}>
+        Hidden Link
+      </a>
+
       <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center">
         {isRedirecting ? (
           <>
@@ -64,7 +78,7 @@ export default function Home({ searchParams }: PageProps) {
               <h1 className="text-2xl font-bold tracking-tight">
                 Открыть в приложении?
               </h1>
-              <p className="text-gray-500 text-lg">
+              <p className="text-gray-500 text-lg leading-relaxed">
                 Если приложение не открылось автоматически, нажмите на кнопку
                 ниже:
               </p>
