@@ -60,48 +60,31 @@ export default function Home({ searchParams }: PageProps) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white p-6 font-sans text-black">
       {/* Hidden link for simulated click */}
-      <a
-        ref={linkRef}
-        target="_blank"
-        href={targetUrl}
-        rel="noopener noreferrer"
-        style={{ display: "none" }}
-      >
-        Hidden Link
-      </a>
 
       <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center">
-        {isRedirecting ? (
-          <>
-            <div className="h-14 w-14 animate-spin rounded-full border-4 border-gray-100 border-t-emerald-500"></div>
+        <>
+          <div className="space-y-4">
             <h1 className="text-2xl font-bold tracking-tight">
-              Переходим в приложение...
+              Открыть в приложении?
             </h1>
-          </>
-        ) : (
-          <>
-            <div className="space-y-4">
-              <h1 className="text-2xl font-bold tracking-tight">
-                Открыть в приложении?
-              </h1>
-              <p className="text-gray-500 text-lg leading-relaxed">
-                Если приложение не открылось автоматически, нажмите на кнопку
-                ниже:
-              </p>
-            </div>
-
-            <a
-              href={targetUrl}
-              className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-emerald-500 px-8 py-5 text-xl font-bold text-white transition-all hover:bg-emerald-600 active:scale-95 shadow-lg shadow-emerald-200"
-            >
-              Открыть Bazar Market
-            </a>
-
-            <p className="text-sm text-gray-400">
-              Вы будете перенаправлены на сайт bazarmarket.kg
+            <p className="text-gray-500 text-lg leading-relaxed">
+              Если приложение не открылось автоматически, нажмите на кнопку
+              ниже:
             </p>
-          </>
-        )}
+          </div>
+
+          <a
+            ref={linkRef}
+            href={targetUrl}
+            className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-emerald-500 px-8 py-5 text-xl font-bold text-white transition-all hover:bg-emerald-600 active:scale-95 shadow-lg shadow-emerald-200"
+          >
+            Открыть Bazar Market
+          </a>
+
+          <p className="text-sm text-gray-400">
+            Вы будете перенаправлены на сайт bazarmarket.kg
+          </p>
+        </>
       </div>
     </div>
   );
