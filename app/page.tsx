@@ -1,87 +1,262 @@
 "use client";
 
-import { useEffect, useState, use, useRef } from "react";
+import { useState, useRef, useCallback, useEffect, Suspense } from "react";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 
-interface PageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+// --- Types & Constants ---
+type MobilePlatform = "ios" | "android" | "unknown";
+
+const REDIRECT_TIMEOUT_MS = 2000;
+const DEFAULT_IMAGE_SRC = "/images/image.png";
+const PROD_DOMAIN = "web-customer.bazarmarket.kg";
+const WEB_BASE_URL = `https://${PROD_DOMAIN}`;
+const APP_STORE_URL = "https://apps.apple.com/us/app/bazar-market/id6748224863";
+const PLAY_MARKET_URL =
+  "https://play.google.com/store/apps/details?id=kz.bazarmarket.customer";
+
+// --- Utils ---
+function getStoreCta(platform: MobilePlatform) {
+  const isIOS = platform === "ios";
+  return {
+    href: isIOS ? APP_STORE_URL : PLAY_MARKET_URL,
+    storeLabel: isIOS ? "App Store" : "Google Play",
+  };
 }
 
-export default function Home({ searchParams }: PageProps) {
-  const params = use(searchParams);
-  const [targetUrl, setTargetUrl] = useState(
-    "https://web-customer.bazarmarket.kg",
-  );
-  const [isRedirecting, setIsRedirecting] = useState(true);
-  const linkRef = useRef<HTMLAnchorElement>(null);
+// --- Hooks ---
+function useSmartRedirect({
+  targetUrl,
+  storeUrl,
+  fallbackUrl,
+}: {
+  targetUrl: string;
+  storeUrl: string;
+  fallbackUrl: string;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  const appOpened = useRef(false);
 
-  useEffect(() => {
-    const linkParam = typeof params.link === "string" ? params.link : "";
-    const baseDomain = "https://web-customer.bazarmarket.kg";
-    let finalUrl = baseDomain;
+  const handleDownload = useCallback(() => {
+    window.location.href = storeUrl;
+  }, [storeUrl]);
 
-    if (linkParam) {
-      if (linkParam.startsWith("http")) {
-        try {
-          const url = new URL(linkParam);
-          if (url.hostname.endsWith("bazarmarket.kg")) {
-            finalUrl = linkParam;
-          }
-        } catch (e) {
-          console.error("Invalid URL:", e);
-        }
-      } else if (linkParam.startsWith("/")) {
-        finalUrl = `${baseDomain}${linkParam}`;
+  const handleRedirect = useCallback(() => {
+    setIsLoading(true);
+    appOpened.current = false;
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        appOpened.current = true;
+        setIsLoading(false);
+        cleanup();
       }
     }
 
-    setTargetUrl(finalUrl);
+    function onPageHide() {
+      appOpened.current = true;
+      setIsLoading(false);
+      cleanup();
+    }
 
-    // Try to redirect automatically using a simulated click
-    // This often works better for deep links than window.location.href
-    const attemptRedirect = () => {
-      if (linkRef.current) {
-        linkRef.current.click();
+    function cleanup() {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide, { once: true });
+
+    setTimeout(() => {
+      cleanup();
+      if (!appOpened.current) {
+        setIsLoading(false);
+        window.location.href = fallbackUrl;
       }
-    };
+    }, REDIRECT_TIMEOUT_MS);
 
-    // Execute redirection attempt
+    window.open(targetUrl, "_self");
+  }, [targetUrl, fallbackUrl]);
 
-    // After a short delay, stop showing the loader and show the manual button
-    const timer = setTimeout(() => {
-      setIsRedirecting(false);
-      attemptRedirect();
-    }, 1000);
+  return { handleRedirect, handleDownload, isLoading };
+}
 
-    return () => clearTimeout(timer);
-  }, [params.link]);
+// --- UI Components ---
+const LoadingSpinner = () => (
+  <div
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(255, 255, 255, 0.8)",
+      zIndex: 9999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <div
+      style={{
+        width: "40px",
+        height: "40px",
+        border: "4px solid #f3f3f3",
+        borderTop: "4px solid #f97316", // Оранжевый цвет Bazar Market
+        borderRadius: "50%",
+        animation: "spin 1s linear infinite",
+      }}
+    />
+    <style>{`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}</style>
+  </div>
+);
+
+function ProxyPageContent() {
+  const searchParams = useSearchParams();
+  const link = searchParams.get("link") || "";
+
+  const [platform, setPlatform] = useState<MobilePlatform>("unknown");
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/i.test(ua)) setPlatform("ios");
+    else if (/Android/i.test(ua)) setPlatform("android");
+    else setPlatform("unknown");
+  }, []);
+
+  const targetUrl = `bazarmarket://${PROD_DOMAIN}${link}`;
+  const fallbackUrl = `${WEB_BASE_URL}${link}`;
+  const { href: storeUrl } = getStoreCta(platform);
+
+  const { handleRedirect, handleDownload, isLoading } = useSmartRedirect({
+    targetUrl,
+    storeUrl,
+    fallbackUrl,
+  });
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white p-6 font-sans text-black">
-      <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center">
-        <>
-          <div className="space-y-4">
-            <h1 className="text-2xl font-bold tracking-tight">
-              Открыть в приложении?
-            </h1>
-            <p className="text-gray-500 text-lg leading-relaxed">
-              Если приложение не открылось автоматически, нажмите на кнопку
-              ниже:
-            </p>
-          </div>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100dvh",
+        position: "relative",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      }}
+    >
+      {isLoading && <LoadingSpinner />}
 
-          <a
-            ref={linkRef}
-            href={targetUrl}
-            className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-emerald-500 px-8 py-5 text-xl font-bold text-white transition-all hover:bg-emerald-600 active:scale-95 shadow-lg shadow-emerald-200"
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+          padding: "8px 16px",
+          textAlign: "center",
+          width: "100%",
+          maxWidth: "400px",
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            height: "384px",
+            width: "100%",
+            overflow: "hidden",
+          }}
+        >
+          {/** Не забудьте перенести /images/image.png в папку public нового проекта **/}
+          <Image
+            src={DEFAULT_IMAGE_SRC}
+            alt="Bazar Market app"
+            fill
+            style={{ objectFit: "contain" }}
+          />
+        </div>
+
+        <div>
+          <h1
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              margin: "0 0 16px 0",
+            }}
           >
-            Открыть Bazar Market
-          </a>
-
-          <p className="text-sm text-gray-400">
-            Вы будете перенаправлены на сайт bazarmarket.kg
+            Все что нужно
+          </h1>
+          <p
+            style={{
+              maxWidth: "75%",
+              margin: "0 auto",
+              fontSize: "0.875rem",
+              color: "#71717a",
+            }}
+          >
+            Лучшие цены. Ты покупаешь прямо у продавцов — без посредников!
           </p>
-        </>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            width: "100%",
+            marginTop: "16px",
+          }}
+        >
+          <button
+            onClick={handleRedirect}
+            disabled={isLoading}
+            style={{
+              width: "100%",
+              padding: "12px 24px",
+              backgroundColor: "#f97316",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "1.125rem",
+              fontWeight: 500,
+              cursor: isLoading ? "not-allowed" : "pointer",
+              opacity: isLoading ? 0.7 : 1,
+            }}
+          >
+            У меня уже есть приложение
+          </button>
+
+          <button
+            onClick={handleDownload}
+            style={{
+              width: "100%",
+              padding: "12px 24px",
+              backgroundColor: "transparent",
+              color: "inherit",
+              border: "1px solid #e4e4e7",
+              borderRadius: "8px",
+              fontSize: "1.125rem",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            Скачать
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    // Suspense обязателен для useSearchParams в Next 13+ App Router
+    <Suspense fallback={<LoadingSpinner />}>
+      <ProxyPageContent />
+    </Suspense>
   );
 }
